@@ -1,0 +1,17 @@
+{
+  "name": "oracat-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "install-all": "npm.cmd install && npm.cmd install --prefix backend && npm.cmd install --prefix portfolio && npm.cmd install --prefix manager",
+    "dev": "concurrently \"npm.cmd run dev --prefix backend\" \"npm.cmd run dev --prefix portfolio\" \"npm.cmd run dev --prefix manager\"",
+    "start": "concurrently \"npm.cmd run start --prefix backend\" \"npm.cmd run dev --prefix portfolio\" \"npm.cmd run dev --prefix manager\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
