@@ -871,9 +871,9 @@ export default function App() {
             {activePage === 'pricing' && (
               <div className="space-y-12 animate-fade-in">
                 <div className="text-center max-w-2xl mx-auto space-y-4">
-                  <h2 className="text-4xl font-bold tracking-tight font-display text-white">แพ็กเกจ & ราคา (Pricing)</h2>
+                  <h2 className="text-4xl font-bold tracking-tight font-display text-white">{settings.pricing_title || 'แพ็กเกจ & ราคา (Pricing)'}</h2>
                   <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-                    เลือกสรรแพ็กเกจถ่ายภาพที่ดีที่สุดสำหรับเวลาสำคัญของคุณ ถ่ายภาพโดยทีมงานมืออาชีพ
+                    {settings.pricing_subtitle || 'เลือกสรรแพ็กเกจถ่ายภาพที่ดีที่สุดสำหรับเวลาสำคัญของคุณ ถ่ายภาพโดยทีมงานมืออาชีพ'}
                   </p>
                 </div>
 
