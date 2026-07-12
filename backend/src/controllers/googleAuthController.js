@@ -1,4 +1,7 @@
 import fetch from 'node-fetch';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-123';
 
 /**
  * POST /api/auth/google
@@ -41,7 +44,12 @@ export const verifyGoogleToken = async (req, res) => {
     };
 
     console.log(`[Google Auth] ✓ User verified: ${user.name} <${user.email}>`);
-    return res.json({ success: true, user });
+    const token = jwt.sign(
+      { id: user.sub, username: user.email, displayName: user.name },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    return res.json({ success: true, token, user });
 
   } catch (err) {
     console.error('[Google Auth] Server error during token verification:', err.message);
