@@ -83,9 +83,7 @@ const DEFAULT_SETTINGS = {
   job_types: JSON.stringify(DEFAULT_JOB_TYPES),
   packages: JSON.stringify(DEFAULT_PACKAGES),
   promptpay_id: '0938106998',
-  thunder_token: '',
-  pricing_title: 'แพ็กเกจ & ราคา (Pricing)',
-  pricing_subtitle: 'เลือกสรรแพ็กเกจถ่ายภาพที่ดีที่สุดสำหรับเวลาสำคัญของคุณ ถ่ายภาพโดยทีมงานมืออาชีพ'
+  thunder_token: ''
 };
 
 export default function App() {
@@ -2507,28 +2505,6 @@ export default function App() {
                             value={settingsForm.welcome_subtitle}
                             onChange={e => setSettingsForm({ ...settingsForm, welcome_subtitle: e.target.value })}
                             className="w-full bg-[#050505] border border-[#d8b76c]/20 focus:border-[#d8b76c] rounded-xl px-4 py-2.5 text-slate-200 outline-none"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <label className="block text-slate-400 mb-1.5">หัวเรื่องหน้าแพ็กเกจราคา (Pricing Page Title)</label>
-                          <input
-                            type="text"
-                            value={settingsForm.pricing_title || ''}
-                            onChange={e => setSettingsForm({ ...settingsForm, pricing_title: e.target.value })}
-                            className="w-full bg-[#050505] border border-[#d8b76c]/20 focus:border-[#d8b76c] rounded-xl px-4 py-2.5 text-slate-200 outline-none"
-                            placeholder="แพ็กเกจ & ราคา (Pricing)"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <label className="block text-slate-400 mb-1.5">คำอธิบายหน้าแพ็กเกจราคา (Pricing Page Subtitle)</label>
-                          <textarea
-                            rows={2}
-                            value={settingsForm.pricing_subtitle || ''}
-                            onChange={e => setSettingsForm({ ...settingsForm, pricing_subtitle: e.target.value })}
-                            className="w-full bg-[#050505] border border-[#d8b76c]/20 focus:border-[#d8b76c] rounded-xl px-4 py-2.5 text-slate-200 outline-none"
-                            placeholder="เลือกสรรแพ็กเกจถ่ายภาพที่ดีที่สุดสำหรับเวลาสำคัญของคุณ..."
                           />
                         </div>
                       </div>
