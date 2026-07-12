@@ -3,6 +3,10 @@ import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import dns from 'dns';
+
+// Force Node.js to prioritize IPv4 resolution to prevent ENETUNREACH issues on Render
+dns.setDefaultResultOrder('ipv4first');
 
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
 
