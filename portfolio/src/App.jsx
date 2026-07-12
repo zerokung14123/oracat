@@ -707,11 +707,14 @@ export default function App() {
       <header className="sticky top-0 z-40 w-full border-b border-[#d8b76c]/10 bg-slate-950/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActivePage('gallery')}>
-            <span className="text-xl">🐾</span>
+            <svg className="w-6 h-6 text-[#d8b76c]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm-4.5-2c-.83 0-1.5.67-1.5 1.5S6.67 15 7.5 15s1.5-.67 1.5-1.5S8.33 12 7.5 12zm9 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-7.3-4.5c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.13-.5 1.13-1.13 0-.62-.5-1.12-1.13-1.12zm5.6 0c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.12-.5 1.12-1.13 0-.62-.5-1.12-1.12-1.12z" />
+            </svg>
             <h1 className="font-bold tracking-tight text-[#d8b76c] font-display text-lg">ตีนแมวfoto</h1>
           </div>
 
-          <nav className="flex items-center gap-6 text-sm">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-6 text-sm">
             <button 
               onClick={() => setActivePage('gallery')} 
               className={`font-semibold transition ${activePage === 'gallery' ? 'text-[#d8b76c]' : 'text-slate-400 hover:text-slate-200'}`}
@@ -742,7 +745,7 @@ export default function App() {
                 <img src={clientUser.picture} alt={clientUser.name} className="w-6 h-6 rounded-full border border-[#d8b76c]/20" />
                 <span className="text-xs text-slate-400 font-medium hidden sm:inline">{clientUser.name}</span>
                 <button onClick={handleClientLogout} className="text-xs text-slate-500 hover:text-red-400 font-semibold uppercase">
-                  ออกจากระบบ�
+                  ออกจากระบบ
                 </button>
               </div>
             ) : (
@@ -754,6 +757,25 @@ export default function App() {
               </button>
             )}
           </nav>
+
+          {/* Mobile Profile in Header */}
+          <div className="flex md:hidden items-center gap-2">
+            {clientUser ? (
+              <div className="flex items-center gap-2">
+                <img src={clientUser.picture} alt={clientUser.name} className="w-6 h-6 rounded-full border border-[#d8b76c]/20" />
+                <button onClick={handleClientLogout} className="text-[10px] text-slate-500 hover:text-red-400 font-bold uppercase">
+                  ออก
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={triggerGoogleLogin}
+                className="bg-[#d8b76c] text-[#161006] text-[10px] px-2.5 py-1.5 rounded-lg transition font-bold hover:brightness-110"
+              >
+                เข้าสู่ระบบ
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -918,7 +940,11 @@ export default function App() {
 
                 {bookingSuccess ? (
                   <div className="glass p-8 rounded-2xl border border-green-500/20 text-center space-y-4">
-                    <span className="text-5xl">🎉</span>
+                    <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-400">
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
                     <h3 className="text-green-400 font-bold text-xl font-display">ส่งคำขอจองคิวสำเร็จ!</h3>
                     <p className="text-slate-400 text-sm leading-relaxed">
                       ขอขอบคุณที่ลงคิวจองถ่ายภาพกับเรา! ระบบได้รับคำขอจองคิวเรียบร้อยแล้ว ช่างภาพจะตรวจสอบวันเวลาและอนุมัติโดยเร็วที่สุด เมื่อได้รับการอนุมัติแล้ว คุณจะได้รับรหัสติดตามสถานะ 6 หลัก เพื่อนำมาตรวจสอบ ชำระเงินมัดจำ และยืนยันคิวงานได้ในแท็บ "ติดตามสถานะ"
@@ -1144,7 +1170,10 @@ export default function App() {
                 {clientUser && (
                   <div className="glass p-5 rounded-2xl border border-[#d8b76c]/10 space-y-4">
                     <h3 className="text-sm font-bold text-[#d8b76c] font-display flex items-center gap-2">
-                      <span>🐾 คิวงานของคุณ</span>
+                      <svg className="w-4 h-4 text-[#d8b76c] inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
+                      <span>คิวงานของคุณ</span>
                       <span className="text-[10px] bg-[#d8b76c]/10 text-[#d8b76c] px-2 py-0.5 rounded-full font-semibold">
                         {clientJobs.length} รายการ
                       </span>
@@ -1298,8 +1327,10 @@ export default function App() {
                     {trackedJob.booking_status === 'pending' ? (
                       /* Pending review display */
                       <div className="space-y-4 animate-fade-in text-center py-4">
-                        <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto text-amber-400 text-xl font-bold">
-                          ⏳
+                        <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto text-amber-400">
+                          <svg className="w-6 h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
                         <div className="space-y-1">
                           <h4 className="text-sm font-bold text-slate-200">อยู่ระหว่างรอตรวจสอบคิวงาน</h4>
@@ -1439,7 +1470,12 @@ export default function App() {
                         {/* Download delivery button */}
                         {trackedJob.status === 'completed' && (
                           <div className="pt-4 border-t border-slate-900 text-center space-y-3">
-                            <p className="text-xs text-[#74d98a] font-semibold">🎉 คิวงานถ่ายภาพของคุณเสร็จสมบูรณ์เรียบร้อยแล้วครับ!</p>
+                            <p className="text-xs text-[#74d98a] font-semibold flex items-center justify-center gap-1.5">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>คิวงานถ่ายภาพของคุณเสร็จสมบูรณ์เรียบร้อยแล้วครับ!</span>
+                            </p>
                             {trackedJob.download_url ? (
                               <a
                                 href={trackedJob.download_url}
@@ -1483,6 +1519,49 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-[#d8b76c]/10 py-2.5 px-4 flex justify-around items-center shadow-lg shadow-black/85">
+        <button 
+          onClick={() => setActivePage('gallery')} 
+          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition ${activePage === 'gallery' ? 'text-[#d8b76c]' : 'text-slate-400'}`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>ผลงาน</span>
+        </button>
+
+        <button 
+          onClick={() => setActivePage('pricing')} 
+          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition ${activePage === 'pricing' ? 'text-[#d8b76c]' : 'text-slate-400'}`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>แพ็กเกจ</span>
+        </button>
+
+        <button 
+          onClick={() => setActivePage('book')} 
+          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition ${activePage === 'book' ? 'text-[#d8b76c]' : 'text-slate-400'}`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>จองคิว</span>
+        </button>
+
+        <button 
+          onClick={() => setActivePage('track')} 
+          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition ${activePage === 'track' ? 'text-[#d8b76c]' : 'text-slate-400'}`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          <span>ติดตามงาน</span>
+        </button>
+      </nav>
     </div>
   );
 }

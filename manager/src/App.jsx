@@ -90,6 +90,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('manager_token') || '');
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('manager_user') || 'null'));
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Authentication State
   const [username, setUsername] = useState('');
@@ -1360,7 +1361,9 @@ export default function App() {
         <div className="w-full max-w-md bg-gradient-to-b from-[#17140e] to-[#070706] border border-[#d8b76c]/30 p-8 rounded-2xl shadow-2xl relative z-10">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-gradient-to-tr from-[#d8b76c] to-[#f0d695] rounded-full flex items-center justify-center mx-auto shadow-lg shadow-[#d8b76c]/10 mb-4 border border-[#d8b76c]/40">
-              <span className="text-3xl">😺</span>
+              <svg className="w-10 h-10 text-[#d8b76c]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 14c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm-4.5-2c-.83 0-1.5.67-1.5 1.5S6.67 15 7.5 15s1.5-.67 1.5-1.5S8.33 12 7.5 12zm9 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-7.3-4.5c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.13-.5 1.13-1.13 0-.62-.5-1.12-1.13-1.12zm5.6 0c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.12-.5 1.12-1.13 0-.62-.5-1.12-1.12-1.12z" />
+              </svg>
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-white font-display">
               ตีนแมวFoto Manager
@@ -1370,8 +1373,11 @@ export default function App() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             {loginError && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
-                ⚠️ {loginError}
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>{loginError}</span>
               </div>
             )}
 
@@ -1413,7 +1419,36 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex text-[#e6e6e6]">
+    <div className="min-h-screen flex flex-col md:flex-row text-[#e6e6e6] relative">
+      {/* Mobile Top Navbar Header */}
+      <header className="md:hidden flex items-center justify-between px-6 py-4 border-b border-[#d8b76c]/20 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center gap-2">
+          <svg className="w-6 h-6 text-[#d8b76c]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 14c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm-4.5-2c-.83 0-1.5.67-1.5 1.5S6.67 15 7.5 15s1.5-.67 1.5-1.5S8.33 12 7.5 12zm9 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-7.3-4.5c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.13-.5 1.13-1.13 0-.62-.5-1.12-1.13-1.12zm5.6 0c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.12-.5 1.12-1.13 0-.62-.5-1.12-1.12-1.12z" />
+          </svg>
+          <span className="font-bold text-sm tracking-wider text-[#d8b76c] uppercase font-display">ตีนแมวFoto</span>
+        </div>
+        <button 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="text-[#d8b76c] hover:text-white p-1 border border-[#d8b76c]/30 rounded-lg hover:bg-[#d8b76c]/10"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+      </header>
+
+      {/* Mobile Drawer Backdrop overlay */}
+      {mobileMenuOpen && (
+        <div 
+          onClick={() => setMobileMenuOpen(false)}
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
+        />
+      )}
       {/* Toast Notification */}
       {notification.show && (
         <div className={`fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 transition-all border ${
@@ -1421,7 +1456,17 @@ export default function App() {
             ? 'bg-[#121212] border-green-500/30 text-green-400' 
             : 'bg-[#121212] border-red-500/30 text-red-400'
         }`}>
-          <span>{notification.type === 'success' ? '✅' : '⚠️'}</span>
+          <span>
+            {notification.type === 'success' ? (
+              <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            )}
+          </span>
           <span className="text-sm font-semibold">{notification.message}</span>
         </div>
       )}
@@ -1431,7 +1476,11 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
           <div className="bg-[#111] border border-[#d8b76c]/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-5">
             <div className="text-center space-y-1">
-              <div className="w-10 h-10 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto text-xl">✅</div>
+              <div className="w-10 h-10 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-400">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
               <h3 className="font-bold text-white text-lg font-display">อนุมัติรับงาน</h3>
               <p className="text-xs text-slate-400">{approveModal.booking.client_name} — {approveModal.booking.event_date}</p>
             </div>
@@ -1592,10 +1641,14 @@ export default function App() {
       )}
 
       {/* Sidebar Panel */}
-      <aside className="w-64 border-r border-[#d8b76c]/30 bg-gradient-to-b from-[#0d0c09] to-[#050505] flex flex-col justify-between shrink-0 h-screen sticky top-0 overflow-y-auto">
+      <aside className={`w-64 border-r border-[#d8b76c]/30 bg-gradient-to-b from-[#0d0c09] to-[#050505] flex flex-col justify-between shrink-0 h-screen fixed md:sticky md:top-0 inset-y-0 left-0 transition-transform duration-300 z-40 overflow-y-auto ${
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
         <div>
           <div className="p-6 flex items-center gap-3 border-b border-[#d8b76c]/20">
-            <span className="text-3xl">😺</span>
+            <svg className="w-8 h-8 text-[#d8b76c]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm-4.5-2c-.83 0-1.5.67-1.5 1.5S6.67 15 7.5 15s1.5-.67 1.5-1.5S8.33 12 7.5 12zm9 0c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-7.3-4.5c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.13-.5 1.13-1.13 0-.62-.5-1.12-1.13-1.12zm5.6 0c-.62 0-1.12.5-1.12 1.12 0 .63.5 1.13 1.12 1.13.63 0 1.12-.5 1.12-1.13 0-.62-.5-1.12-1.12-1.12z" />
+            </svg>
             <div>
               <h1 className="font-bold text-sm tracking-widest text-[#d8b76c] uppercase font-display">ตีนแมวFoto</h1>
               <span className="text-[10px] text-slate-500 font-semibold tracking-wider">PHOTOGRAPHER HUB</span>
@@ -1610,18 +1663,18 @@ export default function App() {
 
           <nav className="p-4 space-y-1">
             {[
-              { id: 'dashboard', label: 'Dashboard', icon: '◉' },
-              { id: 'queue', label: 'คิวงาน (Queue)', icon: '▤' },
-              { id: 'bookings', label: 'คำขอจอง (Bookings)', icon: '📅', badge: pendingRequests.length },
-              { id: 'revenue', label: 'รายรับ (Revenue)', icon: '◈' },
-              { id: 'tax', label: 'โปรแกรมภาษี (Tax)', icon: '▥' },
-              { id: 'documents', label: 'ใบจอง (Documents)', icon: '▧' },
-              { id: 'gallery', label: 'จัดการผลงาน (Gallery)', icon: '🖼️' },
-              { id: 'settings', label: 'ตั้งค่า (Settings)', icon: '◎' },
+              { id: 'dashboard', label: 'Dashboard', icon: <span className="font-mono text-base">◉</span> },
+              { id: 'queue', label: 'คิวงาน (Queue)', icon: <span className="font-mono text-base">▤</span> },
+              { id: 'bookings', label: 'คำขอจอง (Bookings)', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>, badge: pendingRequests.length },
+              { id: 'revenue', label: 'รายรับ (Revenue)', icon: <span className="font-mono text-base">◈</span> },
+              { id: 'tax', label: 'โปรแกรมภาษี (Tax)', icon: <span className="font-mono text-base">▥</span> },
+              { id: 'documents', label: 'ใบจอง (Documents)', icon: <span className="font-mono text-base">▧</span> },
+              { id: 'gallery', label: 'จัดการผลงาน (Gallery)', icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
+              { id: 'settings', label: 'ตั้งค่า (Settings)', icon: <span className="font-mono text-base">◎</span> },
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border ${
                   activeTab === tab.id
                     ? 'bg-[#d8b76c]/10 text-[#d8b76c] border-[#d8b76c]/30 shadow-lg'
@@ -1629,7 +1682,7 @@ export default function App() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-[#d8b76c]">{tab.icon}</span>
+                  <span className="text-[#d8b76c] flex items-center justify-center w-5 h-5">{tab.icon}</span>
                   <span>{tab.label}</span>
                 </div>
                 {Boolean(tab.badge) && (
@@ -1644,16 +1697,19 @@ export default function App() {
 
         <div className="p-4 border-t border-[#d8b76c]/10">
           <button
-            onClick={handleLogout}
+            onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-[#d8b76c]/20 hover:bg-[#d8b76c]/5 text-[#d8b76c] text-xs font-bold uppercase tracking-widest rounded-xl transition"
           >
-            🚪 Sign Out
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content View */}
-      <main className="flex-grow overflow-y-auto p-8">
+      <main className="flex-grow overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex justify-between items-center pb-6 border-b border-[#d8b76c]/10">
@@ -1762,7 +1818,7 @@ export default function App() {
                     {/* Delivery Delay Overdue widget */}
                     <div className="oracat-card p-6 rounded-2xl space-y-4 border-red-500/20">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-white font-display">แจ้งเตือนส่งงานล่าช้า ⚠️</h3>
+                        <h3 className="text-lg font-bold text-white font-display">แจ้งเตือนส่งงานล่าช้า <svg className="w-4 h-4 text-red-400 inline-block ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></h3>
                         <span className="text-xs bg-red-500/10 border border-red-500/20 text-red-400 font-bold px-2 py-0.5 rounded-lg">
                           เกินกำหนด {getOverdueJobs().length} งาน
                         </span>
@@ -2234,7 +2290,7 @@ export default function App() {
                       </div>
 
                       <div className="bg-[#050505] p-4 rounded-xl border border-[#d8b76c]/10 mt-4 text-[10px] text-slate-500 leading-relaxed">
-                        ⚠️ **หมายเหตุ:** โปรแกรมนี้ช่วยคำนวณเบื้องต้นสำหรับการยื่นภาษีเงินได้ประเภท 40(8) ด้วยตนเอง โปรดใช้เอกสารแสดงรายได้และใบเสร็จลดหย่อนฉบับจริงจากสถาบันการเงินยืนยันก่อนยื่นแบบแสดงรายการภาษีเงินได้บุคคลธรรมดา (ภ.ง.ด. 90/91) กับกรมสรรพากรอีกครั้ง
+                        **หมายเหตุ:** โปรแกรมนี้ช่วยคำนวณเบื้องต้นสำหรับการยื่นภาษีเงินได้ประเภท 40(8) ด้วยตนเอง โปรดใช้เอกสารแสดงรายได้และใบเสร็จลดหย่อนฉบับจริงจากสถาบันการเงินยืนยันก่อนยื่นแบบแสดงรายการภาษีเงินได้บุคคลธรรมดา (ภ.ง.ด. 90/91) กับกรมสรรพากรอีกครั้ง
                       </div>
                     </div>
                   </div>
@@ -2308,7 +2364,7 @@ export default function App() {
                   <div className="oracat-card p-6 rounded-2xl h-fit space-y-4">
                     <h3 className="text-lg font-bold text-white font-display">อัปโหลดรูปภาพผลงาน</h3>
                     <form onSubmit={handleAddPhoto} className="space-y-4 text-xs">
-                      {photoError && <div className="text-xs text-red-400">⚠️ {photoError}</div>}
+                      {photoError && <div className="text-xs text-red-400 flex items-center gap-1"><svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> {photoError}</div>}
                       
                       <div>
                         <label className="block text-slate-400 mb-1">ชื่อรูปผลงาน</label>
@@ -2828,7 +2884,9 @@ export default function App() {
                               'กำลังโหลด...'
                             ) : (
                               <>
-                                <span>🔑</span>
+                                <svg className="w-4 h-4 text-[#d8b76c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m-2 4a5 5 0 110-10 5 5 0 010 10zM19 9h2m-2 2h-1m-1 0H9" />
+                                </svg>
                                 <span>เชื่อมต่อกับ Google Calendar</span>
                               </>
                             )}
@@ -3027,7 +3085,7 @@ export default function App() {
                     <span className="ml-1 text-slate-600 font-normal">(ไม่ระบุได้ — ใช้ส่งอีเมลอัปเดตงาน)</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">✉️</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></span>
                     <input
                       type="email"
                       value={jobForm.email || ''}
@@ -3062,7 +3120,7 @@ export default function App() {
                       htmlFor="job-slip-upload"
                       className="flex items-center gap-2 cursor-pointer px-4 py-2.5 bg-[#050505] border border-dashed border-[#d8b76c]/20 hover:border-[#d8b76c]/50 rounded-xl text-slate-500 hover:text-slate-300 transition text-xs"
                     >
-                      <span>📎</span>
+                      <span><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg></span>
                       <span>{jobForm.slip_image ? 'เปลี่ยนรูปสลิป' : 'อัปโหลดสลิปมัดจำ'}</span>
                     </label>
                     {jobForm.slip_image && (
