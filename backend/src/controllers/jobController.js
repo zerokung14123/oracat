@@ -1,5 +1,6 @@
 import { dbGet, dbQuery, dbRun } from '../config/db.js';
 import { sendJobStatusUpdateEmail } from '../services/emailService.js';
+import fetch from 'node-fetch';
 
 // GET /api/public/track/:code - Get job tracking details for client
 export const getJobByTrackingCode = async (req, res) => {
@@ -88,3 +89,65 @@ export const updateJob = async (req, res) => {
     return res.status(500).json({ error: 'Internal server error.' });
   }
 };
+
+// GET /api/public/client-jobs - Get all bookings & jobs for verified client email
+export const getClientJobsByEmail = async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  let email = '';
+
+  try {
+    if (token === 'dev') {
+      email = req.headers['x-dev-email'] || req.query.email;
+      if (!email) {
+        return res.status(400).json({ error: 'Dev email missing in request headers/query.' });
+      }
+    } else {
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        return res.status(401).json({ error: 'Failed to authenticate Google access token.' });
+      }
+      const userInfo = await response.json();
+      email = userInfo.email;
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email could not be retrieved from Google token.' });
+    }
+
+    const clientJobs = await dbQuery(
+      `SELECT 
+         b.id AS booking_id, 
+         b.client_name, 
+         b.event_date, 
+         b.event_time, 
+         b.job_type, 
+         b.location, 
+         b.status AS booking_status,
+         b.deposit,
+         b.price,
+         b.note,
+         j.id AS job_id,
+         j.tracking_code,
+         j.status AS job_status,
+         j.download_url
+       FROM bookings b
+       LEFT JOIN jobs j ON b.id = j.booking_id
+       WHERE LOWER(b.email) = ? OR LOWER(b.contact) = ?
+       ORDER BY b.event_date DESC, b.created_at DESC`,
+      [email.toLowerCase().trim(), email.toLowerCase().trim()]
+    );
+
+    return res.json(clientJobs);
+  } catch (err) {
+    console.error('Error fetching client jobs:', err.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+

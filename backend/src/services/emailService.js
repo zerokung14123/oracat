@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 
+const PORTFOLIO_URL = process.env.PORTFOLIO_URL || 'http://localhost:3000';
+
 // Create transporter based on env variables if they exist
 const getTransporter = () => {
   const host = process.env.SMTP_HOST;
@@ -102,7 +104,7 @@ export const sendBookingApprovedEmail = async (booking, trackingCode) => {
 ยอดมัดจำที่ต้องชำระ: ฿${Number(booking.deposit || 0).toLocaleString()} บาท
 
 กรุณานำรหัสติดตามนี้ไปกรอกที่แท็บ "ติดตามสถานะงาน" เพื่อสแกน QR Code ชำระมัดจำและยืนยันคิวงาน:
-ลิงก์เว็บไซต์: http://localhost:3000/?page=track&code=${trackingCode}
+ลิงก์เว็บไซต์: ${PORTFOLIO_URL}/?page=track&code=${trackingCode}
 
 ขอบคุณที่เลือกใช้บริการ ตีนแมวfoto ครับ!`;
 
@@ -117,7 +119,7 @@ export const sendBookingApprovedEmail = async (booking, trackingCode) => {
         <h1 style="color: #d8b76c; letter-spacing: 4px; margin: 10px 0; font-size: 32px; font-family: monospace;">${trackingCode}</h1>
         <p style="margin: 0; font-size: 12px; color: #bbb;">(ใช้กรอกที่แท็บ "ติดตามสถานะงาน" บนเว็บไซต์เพื่อชำระเงินและดูความคืบหน้า)</p>
       </div>
-      <p><a href="http://localhost:3000/?page=track&code=${trackingCode}" style="display: inline-block; background-color: #d8b76c; color: #161006; font-weight: bold; padding: 10px 20px; border-radius: 8px; text-decoration: none; margin-top: 10px;">ชำระมัดจำและยืนยันคิวงาน</a></p>
+      <p><a href="${PORTFOLIO_URL}/?page=track&code=${trackingCode}" style="display: inline-block; background-color: #d8b76c; color: #161006; font-weight: bold; padding: 10px 20px; border-radius: 8px; text-decoration: none; margin-top: 10px;">ชำระมัดจำและยืนยันคิวงาน</a></p>
       <hr style="border-color: #222;" />
       <p style="font-size: 12px; color: #666; text-align: center;">© 2026 ตีนแมวfoto. สงวนลิขสิทธิ์ทั้งหมด</p>
     </div>
@@ -209,7 +211,7 @@ export const sendJobStatusUpdateEmail = async (booking, trackingCode, status, do
         </div>
       ` : `
         <p>คุณสามารถติดตามขั้นตอนการทำงานในสเต็ปถัดไปได้ทางหน้าหลักเว็บไซต์</p>
-        <p><a href="http://localhost:3000/?page=track&code=${trackingCode}" style="display: inline-block; background-color: #d8b76c; color: #161006; font-weight: bold; padding: 10px 20px; border-radius: 8px; text-decoration: none;">เปิดหน้าตรวจสอบคิวงาน</a></p>
+        <p><a href="${PORTFOLIO_URL}/?page=track&code=${trackingCode}" style="display: inline-block; background-color: #d8b76c; color: #161006; font-weight: bold; padding: 10px 20px; border-radius: 8px; text-decoration: none;">เปิดหน้าตรวจสอบคิวงาน</a></p>
       `}
 
       <hr style="border-color: #222;" />

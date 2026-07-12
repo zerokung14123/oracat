@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 const MOCK_PHOTOS = [
   { id: 'mock-1', title: 'Romantic Garden Wedding', category: 'wedding', image_url: '/mockups/mockup_wedding.png' },
@@ -14,6 +14,9 @@ export default function App() {
   const [settings, setSettings] = useState({});
   const [bookedDates, setBookedDates] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  console.log("VITE_GOOGLE_CLIENT_ID loaded:", import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
 
   // Filter category state
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -45,6 +48,12 @@ export default function App() {
   const [trackedJob, setTrackedJob] = useState(null);
   const [trackingError, setTrackingError] = useState('');
   const [trackingLoading, setTrackingLoading] = useState(false);
+
+  // Client Jobs Sync State
+  const [clientJobs, setClientJobs] = useState([]);
+  const [clientJobsLoading, setClientJobsLoading] = useState(false);
+  const [clientJobsError, setClientJobsError] = useState('');
+
 
   // Slip verification state
   const [slipImage, setSlipImage] = useState('');
@@ -144,6 +153,9 @@ export default function App() {
   // Fetch settings, photos, and availability
   useEffect(() => {
     fetchPortfolioData();
+    if (clientUser) {
+      fetchClientJobs(clientUser);
+    }
     
     // Parse query params for auto-tracking
     const params = new URLSearchParams(window.location.search);
@@ -174,6 +186,14 @@ export default function App() {
     }
   }, []);
 
+  // Sync client jobs when switching tabs or clientUser changes
+  useEffect(() => {
+    if (activePage === 'track' && clientUser) {
+      fetchClientJobs(clientUser);
+    }
+  }, [activePage, clientUser]);
+
+
   // Auto-scroll to QR/result section when trackedJob data arrives
   useEffect(() => {
     if (trackedJob && trackResultRef.current) {
@@ -190,7 +210,6 @@ export default function App() {
       setBookingContact(clientUser.email || '');
     }
   }, [clientUser]);
-
   const fetchPortfolioData = async () => {
     setLoading(true);
     try {
@@ -201,12 +220,7 @@ export default function App() {
       
       if (portfolioRes.ok) {
         const data = await portfolioRes.json();
-        const apiPhotos = data.photos || [];
-        if (apiPhotos.length > 0) {
-          setPhotos(apiPhotos);
-        } else {
-          setPhotos(MOCK_PHOTOS);
-        }
+        setPhotos(data.photos || []);
         setSettings(data.settings || {});
       } else {
         throw new Error('Server returned non-ok status');
@@ -237,7 +251,9 @@ export default function App() {
       if (email) {
         const devUser = { email, name, picture: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`, sub: 'dev' };
         localStorage.setItem('client_google_user', JSON.stringify(devUser));
+        localStorage.setItem('client_google_access_token', 'dev');
         setClientUser(devUser);
+        fetchClientJobs(devUser);
       }
       return;
     }
@@ -272,7 +288,9 @@ export default function App() {
             picture: userInfo.picture
           };
           localStorage.setItem('client_google_user', JSON.stringify(user));
+          localStorage.setItem('client_google_access_token', tokenResponse.access_token);
           setClientUser(user);
+          fetchClientJobs(user);
         } catch (err) {
           console.error('[Google Login] Error:', err.message);
           setGoogleError(err.message);
@@ -289,12 +307,46 @@ export default function App() {
     if (window.google?.accounts?.oauth2) {
       // Revoke token on logout so next login prompts account selection
       const token = localStorage.getItem('client_google_access_token');
-      if (token) window.google.accounts.oauth2.revoke(token);
+      if (token && token !== 'dev') window.google.accounts.oauth2.revoke(token);
     }
     localStorage.removeItem('client_google_user');
     localStorage.removeItem('client_google_access_token');
     setClientUser(null);
+    setClientJobs([]);
   };
+
+  const fetchClientJobs = async (userObj = clientUser) => {
+    const token = localStorage.getItem('client_google_access_token');
+    if (!token || !userObj) {
+      setClientJobs([]);
+      return;
+    }
+
+    setClientJobsLoading(true);
+    setClientJobsError('');
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      if (token === 'dev') {
+        headers['X-Dev-Email'] = userObj.email;
+      }
+
+      const res = await fetch(`${API_BASE}/public/client-jobs`, { headers });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'ไม่สามารถโหลดข้อมูลคิวงานได้');
+      }
+      setClientJobs(data);
+    } catch (err) {
+      console.error('[Fetch Client Jobs] Error:', err.message);
+      setClientJobsError(err.message);
+    } finally {
+      setClientJobsLoading(false);
+    }
+  };
+
 
   // Helper to list occupied slots for selected date
   const getOccupiedSlots = (date) => {
@@ -353,6 +405,7 @@ export default function App() {
         body: JSON.stringify({
           client_name: bookingClientName || clientUser.name,
           contact: bookingContact || clientUser.email,
+          email: clientUser.email,
           event_date: bookingDate,
           job_type: bookingJobType,
           location: bookingLocation,
@@ -437,6 +490,9 @@ export default function App() {
           setTrackedJob(trackData);
         }
       }
+      if (clientUser) {
+        fetchClientJobs(clientUser);
+      }
     } catch (err) {
       setVerificationError(err.message);
     } finally {
@@ -512,6 +568,36 @@ export default function App() {
     ? photos
     : photos.filter(p => p.category === selectedCategory);
 
+  // Lightbox keyboard navigation (ArrowLeft, ArrowRight, Escape)
+  useEffect(() => {
+    if (!activePhoto) return;
+    
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        const currentIndex = filteredPhotos.findIndex(p => p.id === activePhoto.id);
+        if (currentIndex > 0) {
+          setActivePhoto(filteredPhotos[currentIndex - 1]);
+        } else {
+          setActivePhoto(filteredPhotos[filteredPhotos.length - 1]);
+        }
+      } else if (e.key === 'ArrowRight') {
+        const currentIndex = filteredPhotos.findIndex(p => p.id === activePhoto.id);
+        if (currentIndex < filteredPhotos.length - 1) {
+          setActivePhoto(filteredPhotos[currentIndex + 1]);
+        } else {
+          setActivePhoto(filteredPhotos[0]);
+        }
+      } else if (e.key === 'Escape') {
+        setActivePhoto(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activePhoto, filteredPhotos]);
+
   const getStatusPercentage = (status) => {
     switch (status) {
       case 'briefed': return 25;
@@ -549,20 +635,71 @@ export default function App() {
           onClick={() => setActivePhoto(null)} 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-fade-in"
         >
-          <div className="relative max-w-5xl max-h-[85vh] overflow-hidden flex flex-col items-center">
+          {/* Prev Button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              const currentIndex = filteredPhotos.findIndex(p => p.id === activePhoto.id);
+              if (currentIndex > 0) {
+                setActivePhoto(filteredPhotos[currentIndex - 1]);
+              } else {
+                setActivePhoto(filteredPhotos[filteredPhotos.length - 1]);
+              }
+            }}
+            className="absolute left-4 sm:left-8 z-50 backdrop-blur-md bg-white/5 hover:bg-[#d8b76c]/20 text-white hover:text-[#d8b76c] border border-white/10 hover:border-[#d8b76c]/40 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-105 active:scale-95 text-lg font-bold shadow-lg"
+          >
+            &#10216;
+          </button>
+
+          {/* Main content area */}
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="relative max-w-5xl max-h-[85vh] overflow-hidden flex flex-col items-center"
+          >
             <img 
               src={activePhoto.image_url} 
               alt={activePhoto.title} 
-              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl border border-[#d8b76c]/20" 
+              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl border border-[#d8b76c]/20 cursor-pointer select-none" 
+              onClick={(e) => {
+                // Click on image advances to next image
+                e.stopPropagation();
+                const currentIndex = filteredPhotos.findIndex(p => p.id === activePhoto.id);
+                if (currentIndex < filteredPhotos.length - 1) {
+                  setActivePhoto(filteredPhotos[currentIndex + 1]);
+                } else {
+                  setActivePhoto(filteredPhotos[0]);
+                }
+              }}
             />
             <div className="text-center mt-4 space-y-1">
               <h3 className="font-bold text-lg text-white font-display">{activePhoto.title}</h3>
               <span className="text-xs font-semibold text-[#d8b76c] uppercase tracking-widest">{getCategoryLabel(activePhoto.category)}</span>
             </div>
-            <button className="absolute top-2 right-2 text-white hover:text-slate-300 text-3xl font-bold bg-slate-900/60 w-10 h-10 rounded-full flex items-center justify-center shadow">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setActivePhoto(null)}
+              className="absolute top-2 right-2 text-white hover:text-red-400 text-3xl font-bold bg-slate-900/60 hover:bg-red-500/10 w-10 h-10 rounded-full flex items-center justify-center shadow transition-colors"
+            >
               &times;
             </button>
           </div>
+
+          {/* Next Button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              const currentIndex = filteredPhotos.findIndex(p => p.id === activePhoto.id);
+              if (currentIndex < filteredPhotos.length - 1) {
+                setActivePhoto(filteredPhotos[currentIndex + 1]);
+              } else {
+                setActivePhoto(filteredPhotos[0]);
+              }
+            }}
+            className="absolute right-4 sm:right-8 z-50 backdrop-blur-md bg-white/5 hover:bg-[#d8b76c]/20 text-white hover:text-[#d8b76c] border border-white/10 hover:border-[#d8b76c]/40 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-105 active:scale-95 text-lg font-bold shadow-lg"
+          >
+            &#10217;
+          </button>
         </div>
       )}
 
@@ -570,7 +707,7 @@ export default function App() {
       <header className="sticky top-0 z-40 w-full border-b border-[#d8b76c]/10 bg-slate-950/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActivePage('gallery')}>
-            <span className="text-xl">笨ｨ</span>
+            <span className="text-xl">🐾</span>
             <h1 className="font-bold tracking-tight text-[#d8b76c] font-display text-lg">ตีนแมวfoto</h1>
           </div>
 
@@ -1003,6 +1140,123 @@ export default function App() {
                   <p className="text-slate-400 text-sm">กรอกรหัสติดตาม 6 หลักเพื่อตรวจสอบความคืบหน้าของคิวงานและรายละเอียดการจัดส่ง</p>
                 </div>
 
+                {/* Client Logged In Jobs List Section */}
+                {clientUser && (
+                  <div className="glass p-5 rounded-2xl border border-[#d8b76c]/10 space-y-4">
+                    <h3 className="text-sm font-bold text-[#d8b76c] font-display flex items-center gap-2">
+                      <span>🐾 คิวงานของคุณ</span>
+                      <span className="text-[10px] bg-[#d8b76c]/10 text-[#d8b76c] px-2 py-0.5 rounded-full font-semibold">
+                        {clientJobs.length} รายการ
+                      </span>
+                    </h3>
+
+                    {clientJobsLoading ? (
+                      <div className="flex justify-center py-4">
+                        <div className="w-5 h-5 border-2 border-[#d8b76c]/20 border-t-[#d8b76c] rounded-full animate-spin"></div>
+                      </div>
+                    ) : clientJobsError ? (
+                      <p className="text-xs text-red-400 text-center">{clientJobsError}</p>
+                    ) : clientJobs.length === 0 ? (
+                      <p className="text-xs text-slate-500 text-center py-2">ยังไม่มีประวัติการจองคิวด้วยอีเมลนี้</p>
+                    ) : (
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {clientJobs.map((job) => {
+                          let statusLabel = 'รอดำเนินการ';
+                          let statusColor = 'text-amber-400 bg-amber-400/10 border-amber-400/20';
+
+                          if (job.booking_status === 'pending') {
+                            statusLabel = 'รอตรวจสอบคิวงาน';
+                            statusColor = 'text-amber-400 bg-amber-400/10 border-amber-400/20';
+                          } else if (job.booking_status === 'pending_deposit') {
+                            statusLabel = 'รอชำระเงินมัดจำ';
+                            statusColor = 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+                          } else if (job.booking_status === 'rejected') {
+                            statusLabel = 'ปฏิเสธคำขอ';
+                            statusColor = 'text-red-400 bg-red-400/10 border-red-400/20';
+                          } else if (job.booking_status === 'approved') {
+                            if (job.job_status === 'briefed') {
+                              statusLabel = 'รับบรีฟแล้ว';
+                              statusColor = 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+                            } else if (job.job_status === 'shooting') {
+                              statusLabel = 'กำลังถ่ายภาพ';
+                              statusColor = 'text-purple-400 bg-purple-400/10 border-purple-400/20';
+                            } else if (job.job_status === 'editing') {
+                              statusLabel = 'กำลังแต่งภาพ';
+                              statusColor = 'text-pink-400 bg-pink-400/10 border-pink-400/20';
+                            } else if (job.job_status === 'completed') {
+                              statusLabel = 'ส่งงานแล้ว';
+                              statusColor = 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+                            }
+                          }
+
+                          const isSelected = trackedJob && trackedJob.booking_id === job.booking_id;
+
+                          return (
+                            <button
+                              key={job.booking_id}
+                              onClick={async () => {
+                                if (job.tracking_code) {
+                                  setTrackingCode(job.tracking_code);
+                                  setTrackingLoading(true);
+                                  setTrackingError('');
+                                  setTrackedJob(null);
+                                  try {
+                                    const res = await fetch(`${API_BASE}/public/track/${job.tracking_code}`);
+                                    const data = await res.json();
+                                    if (res.ok) {
+                                      setTrackedJob(data);
+                                    } else {
+                                      throw new Error(data.error);
+                                    }
+                                  } catch (err) {
+                                    setTrackingError(err.message);
+                                  } finally {
+                                    setTrackingLoading(false);
+                                  }
+                                } else {
+                                  setTrackingCode('');
+                                  setTrackedJob({
+                                    id: null,
+                                    booking_id: job.booking_id,
+                                    client_name: job.client_name,
+                                    event_date: job.event_date,
+                                    event_time: job.event_time,
+                                    job_type: job.job_type,
+                                    location: job.location,
+                                    booking_status: job.booking_status,
+                                    deposit: job.deposit,
+                                    price: job.price,
+                                    status: null,
+                                    download_url: null,
+                                    note: job.note
+                                  });
+                                }
+                              }}
+                              className={`w-full text-left p-3 rounded-xl border transition flex justify-between items-center ${
+                                isSelected
+                                  ? 'bg-[#d8b76c]/10 border-[#d8b76c]/40'
+                                  : 'bg-slate-950/60 border-slate-900 hover:border-[#d8b76c]/30 hover:bg-[#d8b76c]/5'
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <div className="text-xs font-bold text-white font-display">
+                                  {getJobTypesList().find(t => t.id === job.job_type)?.label || 'อื่นๆ'}
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {job.event_date} {job.event_time ? `(${job.event_time})` : ''}
+                                </div>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
+                                {statusLabel}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <form onSubmit={handleTrackJob} className="flex gap-3">
                   <input
                     type="text"
@@ -1041,7 +1295,39 @@ export default function App() {
                       </div>
                     </div>
 
-                    {trackedJob.booking_status === 'pending_deposit' ? (
+                    {trackedJob.booking_status === 'pending' ? (
+                      /* Pending review display */
+                      <div className="space-y-4 animate-fade-in text-center py-4">
+                        <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto text-amber-400 text-xl font-bold">
+                          ⏳
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-slate-200">อยู่ระหว่างรอตรวจสอบคิวงาน</h4>
+                          <p className="text-xs text-slate-400">
+                            ช่างภาพได้รับคำขอจองคิวของคุณเรียบร้อยแล้วและกำลังตรวจสอบตารางเวลา 
+                            ระบบจะส่งอีเมลแจ้งความคืบหน้าให้คุณโดยเร็วที่สุด
+                          </p>
+                        </div>
+                      </div>
+                    ) : trackedJob.booking_status === 'rejected' ? (
+                      /* Rejected display */
+                      <div className="space-y-4 animate-fade-in text-center py-4">
+                        <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto text-red-400 text-xl font-bold">
+                          ✕
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-slate-200 font-display">ปฏิเสธคำขอจองคิวงาน</h4>
+                          <p className="text-xs text-slate-400">
+                            ขออภัยด้วยครับ ช่างภาพไม่สามารถรับคิวงานนี้ได้ในขณะนี้
+                          </p>
+                          {trackedJob.note && (
+                            <div className="mt-3 p-3 bg-red-500/5 border border-red-500/10 text-slate-400 text-xs rounded-xl italic">
+                              เหตุผล: {trackedJob.note}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : trackedJob.booking_status === 'pending_deposit' ? (
                       /* Deposit Payment workflow */
                       <div className="space-y-6 animate-fade-in">
                         <div className="text-center bg-[#16130e] border border-[#d8b76c]/20 p-4 rounded-xl space-y-2">
@@ -1186,7 +1472,7 @@ export default function App() {
           <div className="flex items-center gap-4">
             <span className="text-slate-700">|</span>
             <a
-              href="http://localhost:3001"
+              href={import.meta.env.VITE_MANAGER_URL || 'http://localhost:3001'}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-[#d8b76c] transition"

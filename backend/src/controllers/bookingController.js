@@ -1,5 +1,7 @@
 import { dbQuery, dbRun, dbGet } from '../config/db.js';
 import { sendBookingSubmittedEmail, sendBookingApprovedEmail, sendBookingRejectedEmail } from '../services/emailService.js';
+import fetch from 'node-fetch';
+import { upsertCalendarEvent, deleteCalendarEvent } from '../services/googleCalendarService.js';
 
 // Helper to generate a unique 6-character alphanumeric tracking code
 async function generateUniqueCode() {
@@ -16,7 +18,7 @@ async function generateUniqueCode() {
 
 // POST /api/public/bookings - Submit a booking request
 export const createBooking = async (req, res) => {
-  const { client_name, contact, event_date, job_type, location, start_time, end_time, details } = req.body;
+  const { client_name, contact, email, event_date, job_type, location, start_time, end_time, details } = req.body;
 
   if (!client_name || !contact || !event_date || !job_type || !start_time || !end_time) {
     return res.status(400).json({ error: 'ชื่อลูกค้า, ข้อมูลติดต่อ, วันที่ถ่ายภาพ, ประเภทงาน, และเวลาเริ่ม-สิ้นสุด จำเป็นต้องระบุครบถ้วน' });
@@ -53,9 +55,11 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'ช่วงเวลาที่คุณเลือกมีคิวงานอื่นจองไว้แล้ว โปรดเลือกช่วงเวลาอื่น' });
     }
 
-    // Get deposit amount from settings
+    // Get deposit and package price from settings
     let depositAmount = 1000;
+    let packagePrice = 0;
     try {
+      // 1. Get deposit from job_types
       const jobTypesSetting = await dbGet("SELECT value FROM settings WHERE key = 'job_types'");
       if (jobTypesSetting) {
         const list = JSON.parse(jobTypesSetting.value);
@@ -64,20 +68,30 @@ export const createBooking = async (req, res) => {
           depositAmount = Number(found.deposit);
         }
       }
+
+      // 2. Get price from packages
+      const packagesSetting = await dbGet("SELECT value FROM settings WHERE key = 'packages'");
+      if (packagesSetting) {
+        const list = JSON.parse(packagesSetting.value);
+        const found = list.find(t => t.id === job_type);
+        if (found && found.price !== undefined) {
+          packagePrice = Number(String(found.price).replace(/[^0-9]/g, '')) || 0;
+        }
+      }
     } catch (e) {
-      console.error('Error fetching deposit from settings:', e.message);
+      console.error('Error fetching pricing from settings:', e.message);
     }
 
     const eventTime = `${start_time} - ${end_time}`;
 
     const result = await dbRun(
       `INSERT INTO bookings (
-        client_name, contact, event_date, event_time, details,
+        client_name, contact, email, event_date, event_time, details,
         job_type, price, deposit, location, start_time, end_time, note, status
-      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 'pending')`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
-        client_name, contact, event_date, eventTime, details || '',
-        job_type, depositAmount, location || '', start_time, end_time, details || ''
+        client_name, contact, email || '', event_date, eventTime, details || '',
+        job_type, packagePrice, depositAmount, location || '', start_time, end_time, details || ''
       ]
     );
 
@@ -141,6 +155,12 @@ export const adminCreateBooking = async (req, res) => {
     }
 
     const newBooking = await dbGet('SELECT * FROM bookings WHERE id = ?', [result.id]);
+
+    // Google Calendar Sync
+    if (status === 'approved') {
+      upsertCalendarEvent(newBooking).catch(err => console.error('[Google Calendar] Sync Error:', err.message));
+    }
+
     return res.status(201).json({ booking: newBooking, job });
   } catch (err) {
     console.error('Error in adminCreateBooking:', err.message);
@@ -223,6 +243,14 @@ export const updateBooking = async (req, res) => {
 
     const updatedBooking = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
 
+    // Google Calendar Sync Logic
+    if (updatedBooking.status === 'approved') {
+      upsertCalendarEvent(updatedBooking).catch(err => console.error('[Google Calendar] Sync Error:', err.message));
+    } else if (booking.status === 'approved' && updatedBooking.status !== 'approved' && booking.google_event_id) {
+      deleteCalendarEvent(booking.google_event_id).catch(err => console.error('[Google Calendar] Delete Error:', err.message));
+      await dbRun("UPDATE bookings SET google_event_id = NULL WHERE id = ?", [id]);
+    }
+
     // Send status changed emails
     if (statusChanged) {
       if (updatedStatus === 'pending_deposit' && trackingCode) {
@@ -249,6 +277,10 @@ export const deleteBooking = async (req, res) => {
     const booking = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found.' });
+    }
+
+    if (booking.google_event_id) {
+      deleteCalendarEvent(booking.google_event_id).catch(err => console.error('[Google Calendar] Delete Error:', err.message));
     }
 
     // SQLite FOREIGN KEY ON DELETE CASCADE will automatically delete the related job from the jobs table!
@@ -304,11 +336,15 @@ export const verifySlip = async (req, res) => {
         : `[ชำระมัดจำแล้ว (โหมดแซนด์บ็อกซ์): ยอด ฿${booking.deposit.toLocaleString()}]`;
 
       await dbRun(
-        "UPDATE bookings SET status = 'approved', note = ? WHERE id = ?",
-        [updatedNote, id]
+        "UPDATE bookings SET status = 'approved', note = ?, slip_image = ? WHERE id = ?",
+        [updatedNote, slip_image, id]
       );
 
       const updatedBooking = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
+      
+      // Google Calendar Sync
+      upsertCalendarEvent(updatedBooking).catch(err => console.error('[Google Calendar] Sync Error:', err.message));
+
       return res.json({
         success: true,
         message: 'ชำระมัดจำเรียบร้อยแล้ว (โหมดทดสอบ)',
@@ -339,7 +375,7 @@ export const verifySlip = async (req, res) => {
       return res.status(400).json({ error: `ไม่สามารถยืนยันสลิปได้: ${errMsg}` });
     }
 
-    const slipAmount = result.data.amount.amount;
+    const slipAmount = result.data.amountInSlip || (result.data.rawSlip && result.data.rawSlip.amount && result.data.rawSlip.amount.amount) || 0;
     const requiredDeposit = booking.deposit;
 
     if (slipAmount < requiredDeposit) {
@@ -348,17 +384,23 @@ export const verifySlip = async (req, res) => {
       });
     }
 
+    const transRef = (result.data.rawSlip && result.data.rawSlip.transRef) || 'N/A';
+
     // Success - update booking status to approved
     const updatedNote = booking.note 
-      ? `${booking.note}\n[ชำระมัดจำแล้วผ่าน Thunder Solution: ยอด ฿${slipAmount.toLocaleString()} อ้างอิง: ${result.data.transRef}]`
-      : `[ชำระมัดจำแล้วผ่าน Thunder Solution: ยอด ฿${slipAmount.toLocaleString()} อ้างอิง: ${result.data.transRef}]`;
+      ? `${booking.note}\n[ชำระมัดจำแล้วผ่าน Thunder Solution: ยอด ฿${slipAmount.toLocaleString()} อ้างอิง: ${transRef}]`
+      : `[ชำระมัดจำแล้วผ่าน Thunder Solution: ยอด ฿${slipAmount.toLocaleString()} อ้างอิง: ${transRef}]`;
 
     await dbRun(
-      "UPDATE bookings SET status = 'approved', note = ? WHERE id = ?",
-      [updatedNote, id]
+      "UPDATE bookings SET status = 'approved', note = ?, slip_image = ? WHERE id = ?",
+      [updatedNote, slip_image, id]
     );
 
     const updatedBooking = await dbGet('SELECT * FROM bookings WHERE id = ?', [id]);
+
+    // Google Calendar Sync
+    upsertCalendarEvent(updatedBooking).catch(err => console.error('[Google Calendar] Sync Error:', err.message));
+
     return res.json({
       success: true,
       message: 'ยืนยันการชำระเงินมัดจำเสร็จสิ้น! คิวงานของคุณเข้าสู่ระบบของช่างภาพเรียบร้อยแล้ว',

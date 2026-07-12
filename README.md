@@ -34,15 +34,26 @@ oracat/
 
 This app runs fully locally. We have set up a workspace manager to run all services concurrently.
 
-### 1. Installation
+### Option A: One-Click Execution (Recommended)
 
-From the root directory, install the workspace dependencies and all sub-service dependencies with a single command:
+Simply double-click the **`RUN_DEV.cmd`** file in the root folder. It will:
+1. Check if Node.js is installed.
+2. Automatically check and install missing dependencies for the root, backend, portfolio, and manager projects if they are not already installed.
+3. Start all development servers (Backend, Client Portfolio Showcase, and Manager Dashboard) concurrently.
+
+### Option B: CLI Commands
+
+If you prefer to run it manually from a terminal:
+
+#### 1. Installation
+
+From the root directory, install all workspace and sub-service dependencies with a single command:
 
 ```bash
 npm run install-all
 ```
 
-### 2. Run in Development Mode
+#### 2. Run in Development Mode
 
 To start the Backend, Photographer Manager Dashboard, and Client Portfolio Showcase concurrently:
 

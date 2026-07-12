@@ -2,10 +2,11 @@ import express from 'express';
 import { login, changePassword } from '../controllers/authController.js';
 import { getPublicPhotos, getAllPhotos, addPhoto, updatePhoto, deletePhoto } from '../controllers/photoController.js';
 import { createBooking, getAllBookings, adminCreateBooking, updateBooking, deleteBooking, getPublicBookingDates, verifySlip } from '../controllers/bookingController.js';
-import { getJobByTrackingCode, getAllJobs, updateJob } from '../controllers/jobController.js';
+import { getJobByTrackingCode, getAllJobs, updateJob, getClientJobsByEmail } from '../controllers/jobController.js';
 import { getPublicPortfolio, getSettings, updateSettings } from '../controllers/settingsController.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { verifyGoogleToken } from '../controllers/googleAuthController.js';
+import { getGoogleCalendarAuthUrl, handleGoogleCalendarCallback, getCalendarConnectionStatus, disconnectCalendar, exchangeAuthCode, triggerManualSync } from '../controllers/googleCalendarController.js';
 
 const router = express.Router();
 
@@ -24,6 +25,10 @@ router.post('/public/bookings/:id/verify-slip', verifySlip);
 
 // Job tracking search
 router.get('/public/track/:code', getJobByTrackingCode);
+router.get('/public/client-jobs', getClientJobsByEmail);
+
+// Google Calendar OAuth Callback (Public Redirect)
+router.get('/auth/google/calendar/callback', handleGoogleCalendarCallback);
 
 
 // --- PROTECTED ROUTES (Requires Authentication) ---
@@ -50,5 +55,12 @@ router.put('/settings', authMiddleware, updateSettings);
 
 // Auth management
 router.post('/auth/change-password', authMiddleware, changePassword);
+
+// Google Calendar Management
+router.get('/auth/google/calendar/auth-url', authMiddleware, getGoogleCalendarAuthUrl);
+router.get('/auth/google/calendar/status', authMiddleware, getCalendarConnectionStatus);
+router.post('/auth/google/calendar/disconnect', authMiddleware, disconnectCalendar);
+router.post('/auth/google/calendar/exchange-code', authMiddleware, exchangeAuthCode);
+router.post('/auth/google/calendar/sync', authMiddleware, triggerManualSync);
 
 export default router;

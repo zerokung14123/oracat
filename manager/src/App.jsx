@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 const DEFAULT_JOB_TYPES = [
   { id: 'wedding', label: 'งานแต่งงาน', days: 30, deposit: 5000 },
@@ -181,6 +181,142 @@ export default function App() {
       setNotification({ show: false, message: '', type: 'success' });
     }, 4000);
   };
+
+  // Google Calendar States
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarEmail, setCalendarEmail] = useState('');
+  const [calendarLoading, setCalendarLoading] = useState(false);
+
+  const fetchCalendarStatus = async () => {
+    try {
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/auth/google/calendar/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCalendarConnected(data.connected);
+        setCalendarEmail(data.email || '');
+      }
+    } catch (e) {
+      console.error('Failed to fetch calendar status', e);
+    }
+  };
+
+  const handleConnectCalendar = () => {
+    if (!window.google?.accounts?.oauth2) {
+      showNotification('ไม่สามารถโหลดระบบเชื่อมต่อ Google ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง', 'error');
+      return;
+    }
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '629659023739-3s6q51voaeb9koebh7rm63l1c3dihdi1.apps.googleusercontent.com';
+
+    const client = window.google.accounts.oauth2.initCodeClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/calendar.events',
+      ux_mode: 'popup',
+      callback: async (response) => {
+        if (response.code) {
+          try {
+            setCalendarLoading(true);
+            const res = await fetch(`${API_BASE}/auth/google/calendar/exchange-code`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ code: response.code })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              setCalendarConnected(true);
+              setCalendarEmail(data.email || 'Connected Account');
+              showNotification('เชื่อมต่อ Google Calendar สำเร็จแล้ว!', 'success');
+            } else {
+              showNotification(data.error || 'แลกเปลี่ยน Token ไม่สำเร็จ', 'error');
+            }
+          } catch (err) {
+            showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อปฏิทิน', 'error');
+          } finally {
+            setCalendarLoading(false);
+          }
+        } else {
+          showNotification('การอนุญาตสิทธิ์ไม่สำเร็จ', 'error');
+        }
+      }
+    });
+
+    client.requestCode();
+  };
+
+  const handleDisconnectCalendar = async () => {
+    if (!window.confirm('คุณต้องการยกเลิกการเชื่อมต่อกับ Google Calendar ใช่หรือไม่?')) return;
+    try {
+      setCalendarLoading(true);
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/auth/google/calendar/disconnect`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCalendarConnected(false);
+        setCalendarEmail('');
+        showNotification('ยกเลิกการเชื่อมต่อ Google Calendar เรียบร้อยแล้ว', 'success');
+      } else {
+        showNotification(data.error || 'ไม่สามารถยกเลิกการเชื่อมต่อได้', 'error');
+      }
+    } catch (e) {
+      showNotification('เกิดข้อผิดพลาดในการยกเลิกเชื่อมต่อปฏิทิน', 'error');
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleSyncCalendarBookings = async () => {
+    try {
+      setCalendarLoading(true);
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/auth/google/calendar/sync`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showNotification(`ซิงก์คิวงานเรียบร้อยแล้ว ทั้งหมด ${data.syncedCount} คิวงาน`, 'success');
+      } else {
+        showNotification(data.error || 'ไม่สามารถซิงก์คิวงานได้', 'error');
+      }
+    } catch (e) {
+      showNotification('เกิดข้อผิดพลาดในการซิงก์คิวงาน', 'error');
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchCalendarStatus();
+      
+      // Parse query params to detect success/error callback
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('activeTab');
+      const calendarConnect = params.get('calendarConnect');
+      const message = params.get('message');
+      
+      if (tabParam === 'settings') {
+        setActiveTab('settings');
+        // Clean URL params to avoid alerts repeating on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        if (calendarConnect === 'success') {
+          showNotification('เชื่อมต่อ Google Calendar สำเร็จแล้ว!', 'success');
+        } else if (calendarConnect === 'error') {
+          showNotification(`เชื่อมต่อไม่สำเร็จ: ${message || 'เกิดข้อผิดพลาด'}`, 'error');
+        }
+      }
+    }
+  }, [token]);
 
   // Fetch initial dashboard data
   useEffect(() => {
@@ -767,6 +903,19 @@ export default function App() {
   const getSelectedBookingJob = () => {
     return bookings.find(b => String(b.id) === String(selectedBookingJobId)) || null;
   };
+
+  useEffect(() => {
+    const job = bookings.find(b => String(b.id) === String(selectedBookingJobId));
+    if (job && job.slip_image) {
+      const img = new Image();
+      img.onload = () => {
+        setBookingSlipImage(img);
+      };
+      img.src = job.slip_image;
+    } else {
+      setBookingSlipImage(null);
+    }
+  }, [selectedBookingJobId, bookings]);
 
   useEffect(() => {
     if (activeTab === 'documents') {
@@ -2615,9 +2764,83 @@ export default function App() {
                     </button>
                   </form>
 
+                  {/* Google Calendar Connection Section */}
+                  <div className="space-y-4 pt-6 border-t border-[#d8b76c]/20">
+                    <h4 className="text-sm font-bold text-[#d8b76c] font-display flex items-center gap-2">
+                      <span>📅 การเชื่อมต่อ Google Calendar (ปฏิทินของช่างภาพ)</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      เชื่อมต่อปฏิทิน Google ของคุณเพื่อบันทึกคิวงานถ่ายภาพที่ได้รับการอนุมัติแล้ว (Approved) ลงปฏิทินโดยอัตโนมัติ 
+                      ช่วยให้คุณเช็คตารางงานผ่านมือถือและอุปกรณ์อื่น ๆ ได้สะดวกและรวดเร็ว
+                    </p>
+                    
+                    <div className="bg-[#050505]/40 border border-[#d8b76c]/10 p-5 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-400 font-semibold">สถานะการเชื่อมต่อ:</span>
+                          {calendarConnected ? (
+                            <span className="text-xs text-emerald-400 font-bold bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              เชื่อมต่อแล้ว
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-500 font-bold bg-slate-800 border border-slate-700 px-2.5 py-0.5 rounded-full">
+                              ยังไม่ได้เชื่อมต่อ
+                            </span>
+                          )}
+                        </div>
+                        
+                        {calendarConnected && (
+                          <div className="text-xs font-semibold text-slate-300">
+                            บัญชี Google: <span className="font-mono text-[#d8b76c]">{calendarEmail}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {calendarConnected ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={calendarLoading}
+                              onClick={handleSyncCalendarBookings}
+                              className="bg-[#d8b76c] hover:brightness-110 text-[#161006] font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-1.5 disabled:opacity-50 shadow-lg shadow-[#d8b76c]/10"
+                            >
+                              {calendarLoading ? 'กำลังดำเนินการ...' : '🔄 ซิงก์คิวงานย้อนหลัง'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={calendarLoading}
+                              onClick={handleDisconnectCalendar}
+                              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold border border-red-500/20 hover:border-red-500/30 px-4 py-2.5 rounded-xl transition text-xs disabled:opacity-50"
+                            >
+                              {calendarLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกการเชื่อมต่อ'}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={calendarLoading}
+                            onClick={handleConnectCalendar}
+                            className="bg-[#d8b76c] hover:brightness-110 text-[#161006] font-bold px-5 py-2.5 rounded-xl transition text-xs shadow-lg shadow-[#d8b76c]/10 flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {calendarLoading ? (
+                              'กำลังโหลด...'
+                            ) : (
+                              <>
+                                <span>🔑</span>
+                                <span>เชื่อมต่อกับ Google Calendar</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Change Password form */}
                   <div className="space-y-4 pt-6 border-t border-[#d8b76c]/20">
-                    <h4 className="text-sm font-bold text-[#d8b76c] font-display">5. เปลี่ยนรหัสผ่านสำหรับเข้าสู่ระบบ (Change Admin Password)</h4>
+                    <h4 className="text-sm font-bold text-[#d8b76c] font-display">6. เปลี่ยนรหัสผ่านสำหรับเข้าสู่ระบบ (Change Admin Password)</h4>
                     <p className="text-[11px] text-slate-500">คุณสามารถเปลี่ยนรหัสผ่านเพื่อความปลอดภัยในการเข้าใช้งาน Oracat Manager Dashboard</p>
                     
                     <form onSubmit={handleChangePassword} className="space-y-4 max-w-md text-xs">
